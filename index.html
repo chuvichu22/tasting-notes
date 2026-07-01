@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 
 const BRANDS_KEY = "tn3-brands";
+const PRODUCTS_KEY = "tn3-products";
 const DISH_INDEX_KEY = "tn3-dish-index";
 const dishKey = (id) => `tn3-dish:${id}`;
 
@@ -39,15 +40,15 @@ const TastingNotes = () => {
 
   useEffect(() => {
     const index = JSON.parse(localStorage.getItem(DISH_INDEX_KEY) || "[]");
-    const loadedDishes = index.map(id => {
+    const loaded = index.map(id => {
       const data = localStorage.getItem(dishKey(id));
       return data ? JSON.parse(data) : null;
     }).filter(Boolean);
-    setDishes(loadedDishes);
+    setDishes(loaded);
   }, []);
 
   const saveDish = () => {
-    if (!currentDish || !currentDish.dishName?.trim()) {
+    if (!currentDish?.dishName?.trim()) {
       alert("요리 이름을 입력해주세요!");
       return;
     }
@@ -71,15 +72,12 @@ const TastingNotes = () => {
     setCurrentDish(null);
   };
 
-  const handlePhotoUpload = async (e) => {
+  const handlePhotos = async (e) => {
     const files = Array.from(e.target.files);
-    if (!files.length) return;
-
-    const compressed = await Promise.all(files.map(file => compressImage(file)));
-
+    const compressed = await Promise.all(files.map(f => compressImage(f)));
     setCurrentDish(prev => ({
       ...prev,
-      photos: [...(prev.photos || []), ...compressed]
+      photos: [...(prev?.photos || []), ...compressed]
     }));
   };
 
@@ -100,23 +98,20 @@ const TastingNotes = () => {
     });
   };
 
-  const filteredDishes = dishes.filter(d => 
-    d.dishName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredDishes = dishes.filter(d => d.dishName.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="max-w-2xl mx-auto p-4">
-      {/* 원래 구조 유지 */}
-      <div className="flex justify-between items-center mb-6">
+      {/* 원래 UI 구조 유지 */}
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
-          <ChefHat /> 테이스팅 노트
+          <ChefHat className="text-orange-600" /> 테이스팅 노트
         </h1>
-        <button onClick={openNewDish} className="bg-orange-600 text-white px-5 py-2 rounded-xl flex items-center gap-2">
+        <button onClick={openNewDish} className="bg-orange-600 text-white px-6 py-3 rounded-xl flex items-center gap-2">
           <Plus /> 새 요리
         </button>
       </div>
 
-      {/* 검색 */}
       <div className="relative mb-6">
         <Search className="absolute left-4 top-3.5 text-gray-400" />
         <input
@@ -131,87 +126,59 @@ const TastingNotes = () => {
       {/* 목록 */}
       <div className="space-y-3">
         {filteredDishes.map(dish => (
-          <div key={dish.id} onClick={() => setCurrentDish(dish)} className="bg-white p-4 rounded-2xl cursor-pointer hover:bg-gray-50">
-            <div className="flex gap-4">
-              {dish.photos?.[0] && <img src={dish.photos[0]} className="w-20 h-20 object-cover rounded-xl" />}
-              <div className="flex-1">
-                <h3 className="font-semibold">{dish.dishName}</h3>
-                <p className="text-sm text-gray-500">{dish.brand}</p>
-              </div>
+          <div key={dish.id} onClick={() => setCurrentDish(dish)} className="bg-white p-4 rounded-2xl cursor-pointer hover:bg-gray-50 flex gap-4">
+            {dish.photos?.[0] && <img src={dish.photos[0]} className="w-20 h-20 object-cover rounded-xl" />}
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg">{dish.dishName}</h3>
+              <p className="text-sm text-gray-500">{dish.brand}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* 편집 모달 */}
+      {/* 상세 편집 */}
       {currentDish && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-auto">
-            {/* ... (원래 구조 비슷하게 유지) */}
-            <div className="p-6">
-              <input
-                type="text"
-                placeholder="요리 이름"
-                value={currentDish.dishName || ""}
-                onChange={(e) => setCurrentDish({...currentDish, dishName: e.target.value})}
-                className="w-full p-4 border rounded-2xl mb-4"
-              />
+            <div className="p-6 border-b flex justify-between">
+              <h2 className="text-2xl font-bold">요리 기록</h2>
+              <button onClick={() => setCurrentDish(null)}><X /></button>
+            </div>
 
-              <select
-                value={currentDish.brand || ""}
-                onChange={(e) => setCurrentDish({...currentDish, brand: e.target.value})}
-                className="w-full p-4 border rounded-2xl mb-4"
-              >
+            <div className="p-6 space-y-6">
+              <input type="text" placeholder="요리 이름" value={currentDish.dishName || ""} onChange={e => setCurrentDish({...currentDish, dishName: e.target.value})} className="w-full p-4 border rounded-2xl" />
+
+              <select value={currentDish.brand || ""} onChange={e => setCurrentDish({...currentDish, brand: e.target.value})} className="w-full p-4 border rounded-2xl">
                 <option value="">브랜드 선택</option>
                 {DEFAULT_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
 
-              <textarea
-                placeholder="레시피"
-                value={currentDish.recipe || ""}
-                onChange={(e) => setCurrentDish({...currentDish, recipe: e.target.value})}
-                className="w-full p-4 border rounded-2xl h-32 mb-4"
-              />
+              <textarea placeholder="레시피" value={currentDish.recipe || ""} onChange={e => setCurrentDish({...currentDish, recipe: e.target.value})} className="w-full p-4 border rounded-2xl h-32" />
 
-              <div className="mb-4">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInputRef.current.click()}
-                  className="w-full p-8 border-2 border-dashed border-gray-300 rounded-2xl"
-                >
-                  📷 사진 추가 (여러장)
+              <div>
+                <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handlePhotos} className="hidden" />
+                <button onClick={() => fileInputRef.current.click()} className="w-full border-2 border-dashed border-gray-300 p-12 rounded-2xl">
+                  📷 사진 추가 (여러 장)
                 </button>
               </div>
 
-              {currentDish.photos && currentDish.photos.length > 0 && (
-                <div className="grid grid-cols-3 gap-3 mb-6">
+              {currentDish.photos?.length > 0 && (
+                <div className="grid grid-cols-3 gap-3">
                   {currentDish.photos.map((photo, i) => (
                     <div key={i} className="relative">
-                      <img src={photo} className="w-full aspect-square object-cover rounded-xl" />
-                      <button onClick={() => removePhoto(i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6">×</button>
+                      <img src={photo} className="w-full aspect-square object-cover rounded-2xl" />
+                      <button onClick={() => removePhoto(i)} className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6">×</button>
                     </div>
                   ))}
                 </div>
               )}
 
-              <textarea
-                placeholder="테이스팅 노트"
-                value={currentDish.comment || ""}
-                onChange={(e) => setCurrentDish({...currentDish, comment: e.target.value})}
-                className="w-full p-4 border rounded-2xl h-32"
-              />
+              <textarea placeholder="테이스팅 노트" value={currentDish.comment || ""} onChange={e => setCurrentDish({...currentDish, comment: e.target.value})} className="w-full p-4 border rounded-2xl h-32" />
             </div>
 
             <div className="p-6 border-t flex gap-4">
               <button onClick={() => setCurrentDish(null)} className="flex-1 py-4 border rounded-2xl">취소</button>
-              <button onClick={saveDish} className="flex-1 py-4 bg-orange-600 text-white rounded-2xl">저장</button>
+              <button onClick={saveDish} className="flex-1 py-4 bg-orange-600 text-white rounded-2xl">저장하기</button>
             </div>
           </div>
         </div>
