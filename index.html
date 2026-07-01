@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>테이스팅 노트</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div id="root"></div>
+
+  <script type="module">
+    import React from "https://esm.sh/react@18";
+    import ReactDOM from "https://esm.sh/react-dom@18";
+
+    // TastingNotes 컴포넌트 불러오기
+    import("./TastingNotes.jsx").then(module => {
+      const TastingNotes = module.default;
+      
+      ReactDOM.render(
+        React.createElement(TastingNotes),
+        document.getElementById("root")
+      );
+    });
+  </script>
+</body>
+</html>
