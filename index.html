@@ -1,193 +1,163 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>테이스팅 노트 - 사원 교육용</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { font-family: system-ui, sans-serif; }
-  </style>
-</head>
-<body class="bg-gray-50 min-h-screen">
-  <div class="max-w-2xl mx-auto p-6">
-    <h1 class="text-4xl font-bold text-center mb-8 flex items-center justify-center gap-3">
-      🍳 테이스팅 노트
-    </h1>
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Search, Plus, ChefHat, Camera, X, Trash2, Image as ImageIcon
+} from "lucide-react";
 
-    <button onclick="openNewDish()" 
-            class="bg-orange-600 text-white px-8 py-4 rounded-2xl text-lg font-medium mb-8 w-full flex items-center justify-center gap-2">
-      <span>새 요리 만들기</span>
-    </button>
+const EDIT_PIN = "2062";
 
-    <div id="dishList" class="space-y-4"></div>
-  </div>
+const TastingNotes = () => {
+  const [dishes, setDishes] = useState([]);
+  const [currentDish, setCurrentDish] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const fileInputRef = useRef(null);
 
-  <!-- 편집 모달 -->
-  <div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-auto">
-      <div class="p-6 border-b flex justify-between items-center">
-        <h2 class="text-2xl font-bold">요리 기록</h2>
-        <button onclick="closeModal()" class="text-3xl text-gray-400">×</button>
-      </div>
+  useEffect(() => {
+    const index = JSON.parse(localStorage.getItem("tn3-dish-index") || "[]");
+    const loaded = index.map(id => {
+      const data = localStorage.getItem(`tn3-dish:${id}`);
+      return data ? JSON.parse(data) : null;
+    }).filter(Boolean);
+    setDishes(loaded);
+  }, []);
 
-      <div class="p-6 space-y-6">
-        <input id="dishName" type="text" placeholder="요리 이름 *" 
-               class="w-full p-4 border rounded-2xl text-lg">
+  const filteredDishes = dishes.filter(d => 
+    d.dishName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-        <select id="brand" class="w-full p-4 border rounded-2xl">
-          <option value="">브랜드 선택</option>
-          <option value="샘표">샘표</option>
-          <option value="차오차이">차오차이</option>
-          <option value="폰타나">폰타나</option>
-          <option value="티아시아">티아시아</option>
-        </select>
+  const checkPin = () => {
+    if (pinInput === EDIT_PIN) {
+      setIsAdmin(true);
+      setPinInput("");
+    } else {
+      alert("PIN이 틀렸습니다.");
+      setPinInput("");
+    }
+  };
 
-        <textarea id="recipe" placeholder="레시피" 
-                  class="w-full p-4 border rounded-2xl h-32"></textarea>
-
-        <div>
-          <input type="file" id="photoInput" multiple accept="image/*" class="hidden" onchange="addPhotos(event)">
-          <button onclick="document.getElementById('photoInput').click()" 
-                  class="w-full border-2 border-dashed border-gray-300 p-12 rounded-2xl hover:border-orange-500">
-            📷 사진 추가 (여러 장 가능)
-          </button>
-        </div>
-
-        <div id="photoPreview" class="grid grid-cols-3 gap-3"></div>
-
-        <textarea id="comment" placeholder="테이스팅 노트 / 후기" 
-                  class="w-full p-4 border rounded-2xl h-32"></textarea>
-      </div>
-
-      <div class="p-6 border-t flex gap-4">
-        <button onclick="closeModal()" class="flex-1 py-4 border rounded-2xl font-medium">취소</button>
-        <button onclick="saveCurrentDish()" class="flex-1 py-4 bg-orange-600 text-white rounded-2xl font-medium">저장하기</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    let dishes = JSON.parse(localStorage.getItem('dishes') || '[]');
-    let currentDish = null;
-    let currentPhotos = [];
-
-    function loadDishes() {
-      dishes = JSON.parse(localStorage.getItem('dishes') || '[]');
-      renderDishList();
+  const saveDish = () => {
+    if (!currentDish?.dishName?.trim()) {
+      alert("요리 이름을 입력해주세요!");
+      return;
     }
 
-    function renderDishList() {
-      const container = document.getElementById('dishList');
-      container.innerHTML = dishes.length === 0 ? 
-        '<p class="text-center text-gray-500 py-12">아직 등록된 요리가 없습니다.</p>' : 
-        dishes.map(d => `
-          <div onclick="editDish('${d.id}')" class="bg-white p-5 rounded-2xl shadow-sm cursor-pointer hover:shadow">
-            <div class="flex gap-4">
-              ${d.photos && d.photos.length ? `<img src="${d.photos[0]}" class="w-20 h-20 object-cover rounded-xl">` : ''}
-              <div class="flex-1">
-                <h3 class="font-semibold text-lg">${d.dishName}</h3>
-                <p class="text-sm text-gray-500">${d.brand || ''}</p>
-              </div>
-            </div>
-          </div>
-        `).join('');
+    const dishToSave = {
+      ...currentDish,
+      id: currentDish.id || Date.now().toString(),
+      updatedAt: Date.now(),
+    };
+
+    localStorage.setItem(`tn3-dish:${dishToSave.id}`, JSON.stringify(dishToSave));
+
+    let index = JSON.parse(localStorage.getItem("tn3-dish-index") || "[]");
+    if (!index.includes(dishToSave.id)) {
+      index.push(dishToSave.id);
+      localStorage.setItem("tn3-dish-index", JSON.stringify(index));
     }
 
-    function openNewDish() {
-      currentDish = { id: Date.now().toString(), date: new Date().toISOString() };
-      currentPhotos = [];
-      document.getElementById('modal').classList.remove('hidden');
-      document.getElementById('dishName').value = '';
-      document.getElementById('brand').value = '';
-      document.getElementById('recipe').value = '';
-      document.getElementById('comment').value = '';
-      document.getElementById('photoPreview').innerHTML = '';
-    }
+    setDishes(prev => [...prev.filter(d => d.id !== dishToSave.id), dishToSave]);
+    alert("✅ 저장되었습니다!");
+    setCurrentDish(null);
+  };
 
-    function closeModal() {
-      document.getElementById('modal').classList.add('hidden');
-    }
+  const handlePhotoUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    const compressed = await Promise.all(files.map(file => compressImage(file)));
+    setCurrentDish(prev => ({
+      ...prev,
+      photos: [...(prev?.photos || []), ...compressed]
+    }));
+  };
 
-    async function addPhotos(e) {
-      const files = Array.from(e.target.files);
-      for (let file of files) {
-        const base64 = await compressImage(file);
-        currentPhotos.push(base64);
-        renderPhotoPreview();
-      }
-    }
-
-    function compressImage(file) {
-      return new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const scale = Math.min(1, 800 / img.width);
-            canvas.width = img.width * scale;
-            canvas.height = img.height * scale;
-            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/jpeg', 0.7));
-          };
-          img.src = e.target.result;
+  const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, 800 / img.width);
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
         };
-        reader.readAsDataURL(file);
-      });
-    }
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
-    function renderPhotoPreview() {
-      const container = document.getElementById('photoPreview');
-      container.innerHTML = currentPhotos.map((p, i) => `
-        <div class="relative">
-          <img src="${p}" class="w-full aspect-square object-cover rounded-2xl">
-          <button onclick="removePhoto(${i})" class="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs">삭제</button>
+  const removePhoto = (index) => {
+    setCurrentDish(prev => ({
+      ...prev,
+      photos: prev.photos.filter((_, i) => i !== index)
+    }));
+  };
+
+  const openNewDish = () => {
+    setCurrentDish({
+      dishName: "",
+      brand: "",
+      recipe: "",
+      comment: "",
+      photos: [],
+    });
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto p-4 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold flex items-center gap-3">
+          <ChefHat className="text-orange-600" /> 테이스팅 노트
+        </h1>
+        <button 
+          onClick={() => setIsAdmin(!isAdmin)} 
+          className="px-4 py-2 text-sm border rounded-xl"
+        >
+          {isAdmin ? "관리자 OFF" : "관리자"}
+        </button>
+      </div>
+
+      {!isAdmin && (
+        <div className="mb-6 p-4 bg-blue-50 rounded-2xl text-center text-sm">
+          사원 교육용입니다. 레시피를 확인하세요.
         </div>
-      `).join('');
-    }
+      )}
 
-    function removePhoto(i) {
-      currentPhotos.splice(i, 1);
-      renderPhotoPreview();
-    }
+      {isAdmin && (
+        <div className="mb-6 p-4 bg-orange-50 rounded-2xl">
+          <input 
+            type="password" 
+            placeholder="PIN 입력 (2062)" 
+            value={pinInput}
+            onChange={(e) => setPinInput(e.target.value)}
+            className="w-full p-3 border rounded-xl"
+            onKeyPress={(e) => e.key === 'Enter' && checkPin()}
+          />
+        </div>
+      )}
 
-    function saveCurrentDish() {
-      if (!currentDish) return;
-      currentDish.dishName = document.getElementById('dishName').value.trim();
-      currentDish.brand = document.getElementById('brand').value;
-      currentDish.recipe = document.getElementById('recipe').value;
-      currentDish.comment = document.getElementById('comment').value;
-      currentDish.photos = currentPhotos;
+      <div className="relative mb-6">
+        <Search className="absolute left-4 top-3.5 text-gray-400" />
+        <input
+          type="text"
+          placeholder="레시피 검색..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-12 p-3 border rounded-2xl"
+        />
+      </div>
 
-      if (!currentDish.dishName) {
-        alert("요리 이름을 입력해주세요!");
-        return;
-      }
-
-      const index = dishes.findIndex(d => d.id === currentDish.id);
-      if (index !== -1) dishes[index] = currentDish;
-      else dishes.push(currentDish);
-
-      localStorage.setItem('dishes', JSON.stringify(dishes));
-      closeModal();
-      loadDishes();
-      alert("✅ 저장되었습니다!");
-    }
-
-    function editDish(id) {
-      currentDish = dishes.find(d => d.id === id);
-      currentPhotos = currentDish.photos || [];
-      document.getElementById('modal').classList.remove('hidden');
-      document.getElementById('dishName').value = currentDish.dishName || '';
-      document.getElementById('brand').value = currentDish.brand || '';
-      document.getElementById('recipe').value = currentDish.recipe || '';
-      document.getElementById('comment').value = currentDish.comment || '';
-      renderPhotoPreview();
-    }
-
-    // 초기 로드
-    loadDishes();
-  </script>
-</body>
-</html>
+      <div className="space-y-3">
+        {filteredDishes.map(dish => (
+          <div 
+            key={dish.id} 
+            onClick={() => setCurrentDish(dish)}
+            className="bg-white p-5 rounded-2xl cursor-pointer hover:bg-gray-50 flex gap-4"
+          >
+            {dish.photos?.[0] && <img src={dish.photos[0]} className="w-20 h-20 object-cover rounded
